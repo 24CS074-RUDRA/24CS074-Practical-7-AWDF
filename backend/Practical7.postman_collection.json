@@ -1,0 +1,194 @@
+{
+  "info": {
+    "_postman_id": "f37c3ec9-8386-4b37-9bec-17bb3de0196c",
+    "name": "Practical 7 - Authentication and Middleware",
+    "description": "Test registration, login, JWT-protected task routes, validation, and unauthorized access. Run Register and Login first; Login stores the token for later requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "name", "value": "Practical 7 Student" },
+    { "key": "email", "value": "" },
+    { "key": "password", "value": "LabPass-2026!" },
+    { "key": "token", "value": "" },
+    { "key": "taskId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Register",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const email = pm.variables.replaceIn('student-{{$guid}}@example.com');",
+              "pm.collectionVariables.set('email', email);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Registration returns 201 Created', function () {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "pm.test('Response does not contain password', function () {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.user).to.not.have.property('password');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{name}}\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/register",
+        "description": "Creates a user with a new unique email and a password that satisfies validation."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Login returns 200 OK', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "if (pm.response.code === 200) {",
+              "  pm.collectionVariables.set('token', pm.response.json().token);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/login",
+        "description": "Logs in using the account from Register. Saves the returned JWT to the collection variable."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Get current user",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/me"
+      },
+      "response": []
+    },
+    {
+      "name": "4. List tasks",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/tasks"
+      },
+      "response": []
+    },
+    {
+      "name": "5. Create task",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Task is created with 201 Created', function () {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "if (pm.response.code === 201) {",
+              "  pm.collectionVariables.set('taskId', pm.response.json().task._id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Complete Practical 7\",\n  \"description\": \"Test the protected task route\",\n  \"priority\": \"medium\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/tasks"
+      },
+      "response": []
+    },
+    {
+      "name": "6. Update task",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"completed\": true\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/tasks/{{taskId}}"
+      },
+      "response": []
+    },
+    {
+      "name": "7. Delete task",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/tasks/{{taskId}}"
+      },
+      "response": []
+    },
+    {
+      "name": "Validation example - missing task title",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"description\": \"This request intentionally has no title\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/tasks"
+      },
+      "response": []
+    },
+    {
+      "name": "Authentication example - missing token",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/tasks"
+      },
+      "response": []
+    }
+  ]
+}
